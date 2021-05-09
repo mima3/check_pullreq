@@ -1,0 +1,6 @@
+{
+  "user": "GitHubのユーザ名",
+  "token": "GitHubのパーソナルアクセストークン",
+  "root": "リポジトリ配下の解析フォルダ ex. srd または {src, ut}",
+  "cSpell": "./cSpell.json などのcSpellの設定ファイル"
+}

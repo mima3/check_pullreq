@@ -13,6 +13,17 @@ function createUrl(url, user, token) {
   console.log('createUrl', url)
   return url.replace('https://', `https://${user}:${token}@`)
 }
+
+async function cSpell(target, config) {
+  const out = await spawn('npx', ['cSpell',  '--wordsOnly', `--unique`, '-c', config, target]).catch(e => {
+    // エラー出力で英単語の一覧が表示される
+    console.error(e.stdout.toString())
+    return e.stdout.toString().split('/n')
+  })
+  return []
+
+}
+
 async function jscpd(local, output) {
   const out = await spawn('npx', ['jscpd', local, '--reporters=json', `--output=${output}`, '--max-size=1Mb','--max-lines=10000']).catch(e => {
     console.error(e.stderr.toString())
@@ -22,8 +33,6 @@ async function jscpd(local, output) {
   }
   // return JSON.parse(fs.readFileSync(path.join(output, 'jscpd-report.json'), 'utf-8'))
 }
-
-
 
 function checkJscpd(diff, jscpdReportPath) {
   const diffResult = [];
@@ -106,7 +115,7 @@ function checkJscpd(diff, jscpdReportPath) {
       return false;
     })
     if (item) {
-      console.log(`コードクローンを修正しました. ${item.firstFile.name} ${item.firstFile.start}:${item.firstFile.end}  ${item.secondFile.name} ${item.secondFile.start}:${item.secondFile.end}`)
+      console.log(`${item.firstFile.name} ${item.firstFile.start}:${item.firstFile.end}  ${item.secondFile.name} ${item.secondFile.start}:${item.secondFile.end}`)
       console.log(item.fragment)
 
     }
@@ -180,14 +189,23 @@ async function run(program, argv) {
   prog
     .command('check <repoName> <pullNo>', {isDefault: true})
     .description('check pull request.')
-    .option('-t, --token <token>', 'GitHub personal token.')
-    .option('-u, --user <user>', 'GitHub user name')
-    .option('-r, --root <rootDir>', 'jscpd root dir. ex. src {routes,models}')
+    .option('-c, --config <config>', 'config path.')
+    .option('-o, --output <output>', 'output folder.')
     .action(async (repoName, pullNo, options) => {
-      const ctrl = new GitHubCtrl(options.user, options.token, repoName);
+      let output = './tmp'
+      if (options.output) {
+        output = options.output
+      }
+      let configPath = './pullReq.config.json'
+      if (options.config) {
+        configPath = options.config
+      }
+
+      const config = require(configPath)
+
+      const ctrl = new GitHubCtrl(config.user, config.token, repoName);
       const pullReq = await ctrl.getPullRequest(pullNo);
-      const output = './tmp'
-      const root = options.root;
+      const root = config.root;
       // 出力フォルダの作成
       if (fs.existsSync(output)) {
         fs.rmdirSync(output, { recursive: true });
@@ -202,7 +220,7 @@ async function run(program, argv) {
       // gitからcloneする
       const local = path.join(output, 'repo');
       await SimpleGit().clone(
-        createUrl(pullReq.base.repo.html_url, options.user, options.token),
+        createUrl(pullReq.base.repo.html_url, config.user, config.token),
         local, {}
       ).catch((err)=>{
         console.error(err);
@@ -224,6 +242,7 @@ async function run(program, argv) {
       const diff = DiffParser(diffStr);
 
       // 修正前のファイルのコードクローンをチェックする
+      console.log('コードクローンの修正***************')
       checkJscpd(diff, path.join(beforeOutput, 'jscpd-report.json'));
 
       // パッチ適用前にメトリックスの集計
@@ -245,6 +264,7 @@ async function run(program, argv) {
       })
 
       // パッチ適用後にメトリックスの集計
+      console.log('複雑度算出***************')
       const afterFiles = []
       diff.commits.forEach((commit, idx) => {
         commit.files.forEach((file, idx) => {
@@ -333,6 +353,10 @@ async function run(program, argv) {
           }
         }
       }
+
+      // 単語チェック
+      console.log('Diffに含まれる未定義の英単語***************')
+      await cSpell(path.join(output, 'git.patch'), config.cSpell)
 
     });
 
