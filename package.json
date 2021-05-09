@@ -1,0 +1,24 @@
+{
+  "name": "check_pullreq",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "acorn": "^8.2.2",
+    "acorn-walk": "^8.1.0",
+    "bl": "^5.0.0",
+    "commander": "^7.2.0",
+    "cspell": "^5.3.12",
+    "git-diff-parser": "^1.0.0",
+    "jscpd": "^3.3.25",
+    "request": "^2.88.2",
+    "request-promise": "^4.2.6",
+    "simple-git": "^2.38.0"
+  }
+}
